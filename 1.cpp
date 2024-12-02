@@ -1,109 +1,10 @@
+#include <limits>
 #include <print>
-#include <type_traits>
-#include <string>
-#include <vector>
+#include "include/list.hpp"
+#include "include/parsing.hpp"
+#include "include/primitives.hpp"
 
 
-constexpr std::vector<std::string> calls;
-
-template<typename... Ts>
-struct show_type;
-
-template<typename... Elements>
-struct list{};
-
-template<auto V>
-struct literal {
-    constexpr static auto value = V;
-};
-
-template<typename T>
-struct is_not {};
-
-template<>
-struct is_not<literal<false>> {
-    using type = literal<true>;
-};
-
-template<>
-struct is_not<literal<true>> {
-    using type = literal<false>;
-};
-
-struct none;
-
-template<typename T>
-struct is_none { using type = literal<false>; };
-
-template<>
-struct is_none<none> { using type = literal<true>; };
-
-
-template<auto... Elements>
-struct input {
-    using type = list<literal<char(Elements)>...>;
-};
-
-
-
-template<template<class, class> typename Func, typename Init, typename List>
-struct fold {};
-
-template<template<class, class> typename Func>
-struct fold_helper {
-    template<typename T>
-    struct F {
-        using type = T;
-
-        template<typename R>
-        auto operator<<(F<R>) {
-            return F<typename Func<T, R>::value>{};
-        };
-    };
-};
-
-
-template<template<class, class> typename Func, typename Init, typename... Elements>
-struct fold<Func, Init, list<Elements...>> {
-    template<typename T>
-    using F = fold_helper<Func>::template F<T>;
-
-    using value = decltype((F<Init>{} << ... << F<Elements>{}))::type;
-};
-
-
-template<typename Cond, typename Then, typename Else>
-struct if_else {};
-
-template<typename Then, typename Else>
-struct if_else<literal<true>, Then, Else> {
-    using type = Then;
-};
-
-template<typename Then, typename Else>
-struct if_else<literal<false>, Then, Else> {
-    using type = Else;
-};
-
-template<typename L, typename R>
-struct or_else { using type = L; };
-
-template<typename R>
-struct or_else<none, R> { using type = R; };
-
-template<typename T>
-using is_digit = literal<0 <= T::value - '0' && T::value - '0' <= 9>;
-
-template<typename T>
-using as_digit = if_else<
-    is_digit<T>, 
-    literal<T::value - '0'>,
-    none
-    // typename if_else<
-    //     literal<T::value >= 0 && T::value <= 9>,
-    //     T,
-    //     none>::type
->;
 
 
 using data = input<
@@ -112,40 +13,65 @@ using data = input<
 
 
 // using testdata = input<49, 50>::type;
-using testdata = list<literal<'1'>, literal<'0'>, literal<'5'>, literal<' '>>;
 
-template<typename L, typename R>
-struct plus {
-    using left = as_digit<L>::type;
-    using right = as_digit<R>::type;
-    using value = literal<left::value + right::value>;
+
+template<typename List>
+struct both {
+    using first = parse_int<List>;
+    using second = parse_int<typename lstrip<typename first::rest>::type>;
+
+    using first_value = first::type;
+    using second_value = second::type;
 };
 
-template<typename Acc>
-struct concatenator {
-    using number = Acc;
+template<typename Lowest, typename Rest>
+struct keep_lowest {
+    using lowest = Lowest;
+    using rest = Rest;
 };
 
-using empty_concat = concatenator<none>;
+using init_keeper = keep_lowest<literal<std::numeric_limits<int>::max()>, list<>>;
 
-template<typename In, typename Char>
-struct concat {
-    using digit = typename as_digit<Char>::type;
+template<typename List, typename Keeper>
+struct extract_lowest {};
 
-    struct IfNotNone {
-        using type = concatenator<
-            literal<In::number::value * 10 + digit::value>
-        >;
-    };
-
-    using type = if_else<
-        typename is_none<typename In::number>::type,
-        concatenator<digit>, 
-        IfNotNone
-    >::type::type::number;
-
-
+template<typename Keeper>
+struct extract_lowest<list<>, Keeper> {
+    using rest = list<>;
+    using type = Keeper;
 };
+
+// template<typename Element, typename... Elements, template<typename, typename...> typename Keeper, typename Lowest, typename... StartSeq>
+// struct extract_lowest<list<Element, Elements...>, keep_lowest<Lowest, list<StartSeq..., Elements...>>> {
+//     // Element is literal<123>
+//     // using Keeper = keep_lowest<Lowest, list<StartSeq..., Elements...>>;
+
+//     struct LessThan {
+//         using advance = extract_lowest<list<Elements...>, keep_lowest<Element, list<Elements...>>>;
+//         using rest = typename advance::rest;
+//         using type = typename advance::type;
+//     };
+
+//     struct GreaterEqualThan {
+//         using advance = extract_lowest<list<Elements...>, Keeper>;
+//         using rest = typename advance::rest;
+//         using type = typename advance::type;
+//     };
+
+//     using cond = typename if_else<
+//         literal<Element::value < Keeper::lowest::value>,
+//         LessThan,
+//         GreaterEqualThan
+//     >::type;
+
+//     using rest = typename cond::rest;
+//     using type = typename cond::type;
+// };
+
+// template<typename T>
+// struct solve {
+//     using type = typename fold<concat, empty_concat, T>::type::number;
+// };
 
 /*
 Parse number from multiple digits, disregard spaces, parse number again, disregard newline
@@ -156,10 +82,15 @@ accumulate over abs(l1[i] - l2[i])
 */
 
 int main() {
-    // using answer = 
-    // using answer = fold<plus, literal<'0'>, testdata>::value;
-    // using answer = fold<read_number, empty_concat, testdata>::value;
-    using answer = concat<concatenator<literal<5>>, literal<'3'>>::type;
-    std::print("answer is {}\n", answer::value);
+    // Testing "extract_lowest"
+    using testdata = value_list<3,5,2,1,4>::type;
+    using lowest1 = extract_lowest<testdata, init_keeper>;
+    // show_type<lowest1::type> show;
+    // using lowest2 = extract_lowest<lowest1::type::rest>;
+    // std::print("lowest is {}, second lowest is {}\n", lowest1::type::lowest::value, lowest2::type::lowest::value);
+    // Testing "both"
+    // using testdata = list<literal<'1'>, literal<'5'>, literal<' '>, literal<' '>, literal<'1'>, literal<'4'>, literal<'\n'>>;
+    // using answer = both<testdata>;
+    // std::print("answer is {} and {}\n", answer::first_value::value, answer::second_value::value);
     return 0;
 }

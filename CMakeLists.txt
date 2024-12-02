@@ -5,3 +5,7 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/bin)
 set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
 add_executable(aoc1 1.cpp)
 set_property(TARGET aoc1 PROPERTY CXX_STANDARD 23)
+
+add_executable(aoc2 2.cpp)
+set_property(TARGET aoc2 PROPERTY CXX_STANDARD 23)
+
