@@ -1,9 +1,9 @@
 
 #include <limits>
 #include <print>
-#include "include/list.hpp"
-#include "include/parsing.hpp"
-#include "include/primitives.hpp"
+#include "js/list.hpp"
+#include "js/parsing.hpp"
+#include "js/primitives.hpp"
 
 using data = input<
 #include "input2.i"
@@ -27,15 +27,21 @@ enum Prev {
     NoValue = std::numeric_limits<int>::max()
 };
 
+enum Continuing {
+    Failed,
+    SkippedOne,
+    Success
+};
+
 
 template<typename PrevDigit, typename Ordering, typename Continuous>
 struct LineState {
     using prev = PrevDigit;
     using order = Ordering;
-    using cont = Continuous; 
+    using cont = Continuous;
 };
 
-using empty_line_state = LineState<literal<Prev::NoValue>, literal<Order::Neither>, literal<true>>;
+using empty_line_state = LineState<literal<Prev::NoValue>, literal<Order::Neither>, literal<Continuing::Success>>;
 
 template<typename In, typename Number>
 struct number_check {
@@ -115,7 +121,7 @@ struct TestSolution {
 };
 
 int main() {
-    // using answer = solve<parse_lines<data>>::type; // Real data, takes ~2 minutes to compile
-    // std::print("Answer is {}\n", answer::value);
+    using answer = solve<parse_lines<data>>::type; // Real data, takes ~2 minutes to compile
+    std::print("Answer is {}\n", answer::value);
     return 0;
 }
