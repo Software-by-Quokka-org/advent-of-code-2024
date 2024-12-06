@@ -1,0 +1,10 @@
+cmake_minimum_required(VERSION 3.20)
+project(AoC2024 VERSION 0.1.0 LANGUAGES CXX)
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS TRUE)
+foreach(i RANGE 101 125)
+    string(SUBSTRING ${i} 1 -1 FOLDER)
+    if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/${FOLDER}/js/CMakeLists.txt")
+        add_subdirectory("${FOLDER}/js" EXCLUDE_FROM_ALL)
+    endif()
+endforeach()
